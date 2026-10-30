@@ -22,7 +22,7 @@ struct AlphaBase {
 
 impl AlphaBase {
     fn name(&self) -> &str {
-        "A/B"
+        "Base"
     }
 
     fn code(&self) -> &str {
@@ -69,10 +69,49 @@ struct AlphaIcon {
     base: Color,
 }
 
+#[derive(Default)]
 struct AlphaPrebuilt {
     size: i32,
     color: Color,
 }
+
+impl AlphaPrebuilt {
+    fn name(&self) -> &str {
+        "Built"
+    }
+
+    fn code(&self) -> &str {
+        "pb"
+    }
+
+    fn sku(&self) -> String {
+        format!("sy{}-{}-{}", self.code(), self.color.code, self.size)
+    }
+
+    fn price(&self) -> u32 {
+        // 25% per item for the store
+        let base: u32 = 75;
+
+        if self.size == 3 {
+            return base;
+        }
+
+        base + (10 * (self.size - 3)) as u32
+    }
+}
+
+impl Display for AlphaPrebuilt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(
+            f,
+            "AlphaPrebuilt:{size}|{color}|{sku}",
+            size = self.size,
+            color = self.color,
+            sku = self.sku()
+        )
+    }
+}
+
 
 const LILAC_PURPLE: Color = Color {
     // name: "LPrp",
@@ -81,27 +120,27 @@ const LILAC_PURPLE: Color = Color {
 };
 
 const YELLOW: Color = Color {
-    name: "Ylw",
+    name: "Yellow",
     code: "y",
 };
 
 const BLACK: Color = Color {
-    name: "Blk",
+    name: "Black",
     code: "bk",
 };
 
 const TURQOISE: Color = Color {
-    name: "Trq",
+    name: "Turquoise",
     code: "tq",
 };
 
 const LIGHT_BLUE: Color = Color {
-    name: "Lblu",
+    name: "Ice Blue",
     code: "lb",
 };
 
 const PINK: Color = Color {
-    name: "Pnk",
+    name: "Pink",
     code: "pn",
 };
 
@@ -127,8 +166,27 @@ fn main() -> Result {
                 ..Default::default()
             };
 
-            assert!(base.sku().len() <= 9, format!("Base sku long"));
-            assert!(base.name().len() <= 15, format!("Base name long"));
+            assert!(base.sku().len() <= 9, "{base}");
+            assert!(base.name().len() <= 15, "{base}");
+
+            worksheet.write(row, 0, format!("{} {} {}", base.name(), base.color.name, base.size)).expect("ERROR: Failed to write base name");
+            worksheet.write(row, 1, format!("{}", base.price())).expect("ERROR: Failed to write base price");
+            worksheet.write(row, 2, format!("{}", base.sku())).expect("ERROR: Failed to write base sku");
+
+            row += 1;
+        }
+    };
+
+    for new_color in COLOR_ARRAY {
+        for new_size in 3..8 {
+            let base = AlphaPrebuilt {
+                color: new_color.clone(),
+                size: new_size,
+                ..Default::default()
+            };
+
+            assert!(base.sku().len() <= 9, "{base}");
+            assert!(base.name().len() <= 15, "{base}");
 
             worksheet.write(row, 0, format!("{} {} {}", base.name(), base.color.name, base.size)).expect("ERROR: Failed to write base name");
             worksheet.write(row, 1, format!("{}", base.price())).expect("ERROR: Failed to write base price");
