@@ -92,7 +92,6 @@ impl Display for AlphaLetter {
     }
 }
 
-
 struct AlphaIcon {
     pack: i32,
 }
@@ -169,6 +168,76 @@ impl Display for AlphaPrebuilt {
     }
 }
 
+struct Greenhouse {
+    size: i32,
+}
+
+impl Greenhouse {
+    fn name(&self) -> &str {
+        "Greenhouse"
+    }
+
+    fn code(&self) -> &str {
+        "gh"
+    }
+
+    fn sku(&self) -> String {
+        format!("sy{}-{}", self.code(), self.size)
+    }
+
+    fn price(&self) -> u32 {
+        match self.size {
+            4 => 100,
+            6 => 120,
+            _ => panic!("Greenhouse size {} price not handled", self.size),
+        }
+    }
+}
+
+impl Display for Greenhouse {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(
+            f,
+            "Greenhouse:{size}|{sku}",
+            size = self.size,
+            sku = self.sku()
+        )
+    }
+}
+
+struct Print {
+    name: &'static str,
+    category: &'static str,
+    price: i32,
+    sku: &'static str,
+}
+
+impl Display for Print {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(
+            f,
+            "3D Print:{category}|{name}|{sku}",
+            category = self.category,
+            name = self.name,
+            sku = self.sku,
+        )
+    }
+}
+
+// impl Print {
+//     fn sku(&self) -> String {
+//         format!("sy{}-{}", self.code(), self.size)
+//     }
+
+//     fn price(&self) -> u32 {
+//         match self.size {
+//             4 => 100,
+//             6 => 120,
+//             _ => panic!("Greenhouse size {} price not handled", self.size)
+//         }
+//     }
+// }
+
 const LILAC_PURPLE: Color = Color {
     // name: "LPrp",
     name: "Purple",
@@ -220,6 +289,7 @@ fn main() -> Result {
 
     let mut row = 1;
 
+    // BLOCK: Bases
     for new_color in COLOR_ARRAY {
         for new_size in 3..8 {
             let base = AlphaBase {
@@ -249,20 +319,15 @@ fn main() -> Result {
         }
     }
 
+    // BLOCK: Icons
     for new_size in 1..11 {
-        let base = AlphaIcon {
-            pack: new_size,
-        };
+        let base = AlphaIcon { pack: new_size };
 
         assert!(base.sku().len() <= 9, "{base}");
         assert!(base.name().len() <= 15, "{base}");
 
         worksheet
-            .write(
-                row,
-                0,
-                format!("{} {}", base.name(), base.pack),
-            )
+            .write(row, 0, format!("{} {}", base.name(), base.pack))
             .expect("ERROR: Failed to write pack name");
         worksheet
             .write(row, 1, format!("{}", base.price()))
@@ -274,7 +339,12 @@ fn main() -> Result {
         row += 1;
     }
 
+    // BLOCK: Letters
     for new_color in COLOR_ARRAY {
+        if new_color == YELLOW {
+            continue;
+        }
+
         for new_size in 65..91 {
             let base = AlphaLetter {
                 letter: (new_size as u8) as char,
@@ -302,6 +372,7 @@ fn main() -> Result {
         }
     }
 
+    // BLOCK: Numbers
     for new_color in COLOR_ARRAY {
         if new_color == YELLOW {
             continue;
@@ -334,9 +405,52 @@ fn main() -> Result {
         }
     }
 
-    workbook
-        .save("Stock.xlsx")
-        .expect("ERROR: Failed to save Stock");
+    // BLOCK: Greenhouses
+    for new_size in [4, 6] {
+        let base = Greenhouse { size: new_size };
+
+        assert!(base.sku().len() <= 9, "{base}");
+        assert!(base.name().len() <= 15, "{base}");
+
+        worksheet
+            .write(row, 0, format!("{} {}", base.name(), base.size))
+            .expect("ERROR: Failed to write  name");
+        worksheet
+            .write(row, 1, format!("{}", base.price()))
+            .expect("ERROR: Failed to write base price");
+        worksheet
+            .write(row, 2, format!("{}", base.sku()))
+            .expect("ERROR: Failed to write base sku");
+
+        row += 1;
+    }
+
+    // BLOCK: Fruit, Veg
+    {
+        let price = 80;
+        let base = Print {
+            category: "Clicker",
+            name: "Fruit & Veg",
+            price: price,
+            sku: "syfv-80",
+        };
+
+        assert!(base.sku.len() <= 9, "{base} sku too long");
+        assert!(base.name.len() <= 15, "{base} name too long");
+
+        worksheet
+            .write(row, 0, format!("{}, {}", base.category, base.name))
+            .expect("ERROR: Failed to write  name");
+        worksheet
+            .write(row, 1, format!("{}", base.price))
+            .expect("ERROR: Failed to write base price");
+        worksheet
+            .write(row, 2, format!("{}", base.sku))
+            .expect("ERROR: Failed to write base sku");
+        workbook
+            .save("Stock.xlsx")
+            .expect("ERROR: Failed to save Stock");
+    }
 
     Ok(())
 }
