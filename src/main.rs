@@ -2,7 +2,7 @@ use rust_xlsxwriter::{Workbook, XlsxError, conditional_format::ConditionalFormat
 
 use std::fmt::{Display, Formatter, Result, format};
 
-#[derive(Debug, Copy, Clone, Default)]
+#[derive(Debug, Copy, Clone, Default, PartialEq)]
 struct Color {
     name: &'static str,
     code: &'static str,
@@ -58,15 +58,72 @@ impl Display for AlphaBase {
 }
 
 struct AlphaLetter {
-    letter: String,
+    letter: char,
     color: Color,
-    base: Color,
 }
 
+impl AlphaLetter {
+    fn name(&self) -> &str {
+        "Keycap"
+    }
+
+    fn code(&self) -> &str {
+        "kc"
+    }
+
+    fn sku(&self) -> String {
+        format!("sy{}-{}-{}", self.code(), self.color.code, self.letter)
+    }
+
+    fn price(&self) -> u32 {
+        6
+    }
+}
+
+impl Display for AlphaLetter {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(
+            f,
+            "AlphaLetter:{color}|{letter}|{sku}",
+            color = self.color,
+            letter = self.letter,
+            sku = self.sku()
+        )
+    }
+}
+
+
 struct AlphaIcon {
-    icon: String,
-    color: Color,
-    base: Color,
+    pack: i32,
+}
+
+impl AlphaIcon {
+    fn name(&self) -> &str {
+        "Icon Pack"
+    }
+
+    fn code(&self) -> &str {
+        "ipk"
+    }
+
+    fn sku(&self) -> String {
+        format!("sy{}-{}", self.code(), self.pack)
+    }
+
+    fn price(&self) -> u32 {
+        1
+    }
+}
+
+impl Display for AlphaIcon {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(
+            f,
+            "AlphaIcon:{pack}|{sku}",
+            pack = self.pack,
+            sku = self.sku()
+        )
+    }
 }
 
 #[derive(Default)]
@@ -112,7 +169,6 @@ impl Display for AlphaPrebuilt {
     }
 }
 
-
 const LILAC_PURPLE: Color = Color {
     // name: "LPrp",
     name: "Purple",
@@ -152,9 +208,15 @@ fn main() -> Result {
     let worksheet = workbook.add_worksheet();
     let _ = worksheet.set_name("Stock");
 
-    worksheet.write(0, 0, "name").expect("ERROR: Failed to write name header");
-    worksheet.write(0, 1, "price").expect("ERROR: Failed to write price header");
-    worksheet.write(0, 2, "sku").expect("ERROR: Failed to write sku header");
+    worksheet
+        .write(0, 0, "name")
+        .expect("ERROR: Failed to write name header");
+    worksheet
+        .write(0, 1, "price")
+        .expect("ERROR: Failed to write price header");
+    worksheet
+        .write(0, 2, "sku")
+        .expect("ERROR: Failed to write sku header");
 
     let mut row = 1;
 
@@ -169,34 +231,112 @@ fn main() -> Result {
             assert!(base.sku().len() <= 9, "{base}");
             assert!(base.name().len() <= 15, "{base}");
 
-            worksheet.write(row, 0, format!("{} {} {}", base.name(), base.color.name, base.size)).expect("ERROR: Failed to write base name");
-            worksheet.write(row, 1, format!("{}", base.price())).expect("ERROR: Failed to write base price");
-            worksheet.write(row, 2, format!("{}", base.sku())).expect("ERROR: Failed to write base sku");
+            worksheet
+                .write(
+                    row,
+                    0,
+                    format!("{} {} {}", base.name(), base.color.name, base.size),
+                )
+                .expect("ERROR: Failed to write  name");
+            worksheet
+                .write(row, 1, format!("{}", base.price()))
+                .expect("ERROR: Failed to write base price");
+            worksheet
+                .write(row, 2, format!("{}", base.sku()))
+                .expect("ERROR: Failed to write base sku");
 
             row += 1;
         }
-    };
+    }
+
+    for new_size in 1..11 {
+        let base = AlphaIcon {
+            pack: new_size,
+        };
+
+        assert!(base.sku().len() <= 9, "{base}");
+        assert!(base.name().len() <= 15, "{base}");
+
+        worksheet
+            .write(
+                row,
+                0,
+                format!("{} {}", base.name(), base.pack),
+            )
+            .expect("ERROR: Failed to write pack name");
+        worksheet
+            .write(row, 1, format!("{}", base.price()))
+            .expect("ERROR: Failed to write pack price");
+        worksheet
+            .write(row, 2, format!("{}", base.sku()))
+            .expect("ERROR: Failed to write pack sku");
+
+        row += 1;
+    }
 
     for new_color in COLOR_ARRAY {
-        for new_size in 3..8 {
-            let base = AlphaPrebuilt {
+        for new_size in 65..91 {
+            let base = AlphaLetter {
+                letter: (new_size as u8) as char,
                 color: new_color.clone(),
-                size: new_size,
-                ..Default::default()
             };
 
             assert!(base.sku().len() <= 9, "{base}");
             assert!(base.name().len() <= 15, "{base}");
 
-            worksheet.write(row, 0, format!("{} {} {}", base.name(), base.color.name, base.size)).expect("ERROR: Failed to write base name");
-            worksheet.write(row, 1, format!("{}", base.price())).expect("ERROR: Failed to write base price");
-            worksheet.write(row, 2, format!("{}", base.sku())).expect("ERROR: Failed to write base sku");
+            worksheet
+                .write(
+                    row,
+                    0,
+                    format!("{} {} {}", base.name(), base.color.name, base.letter),
+                )
+                .expect("ERROR: Failed to write  name");
+            worksheet
+                .write(row, 1, format!("{}", base.price()))
+                .expect("ERROR: Failed to write base price");
+            worksheet
+                .write(row, 2, format!("{}", base.sku()))
+                .expect("ERROR: Failed to write base sku");
 
             row += 1;
         }
-    };
+    }
 
-    workbook.save("Stock.xlsx").expect("ERROR: Failed to save Stock");
+    for new_color in COLOR_ARRAY {
+        if new_color == YELLOW {
+            continue;
+        }
+
+        for new_size in 48..58 {
+            let base = AlphaLetter {
+                letter: (new_size as u8) as char,
+                color: new_color.clone(),
+            };
+
+            assert!(base.sku().len() <= 9, "{base}");
+            assert!(base.name().len() <= 15, "{base}");
+
+            worksheet
+                .write(
+                    row,
+                    0,
+                    format!("{} {} {}", base.name(), base.color.name, base.letter),
+                )
+                .expect("ERROR: Failed to write  name");
+            worksheet
+                .write(row, 1, format!("{}", base.price()))
+                .expect("ERROR: Failed to write base price");
+            worksheet
+                .write(row, 2, format!("{}", base.sku()))
+                .expect("ERROR: Failed to write base sku");
+
+            row += 1;
+        }
+    }
+
+    workbook
+        .save("Stock.xlsx")
+        .expect("ERROR: Failed to save Stock");
 
     Ok(())
 }
