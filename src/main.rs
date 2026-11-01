@@ -17,16 +17,18 @@ enum ProductKind {
     Icon { pack: i32 },
     Greenhouse { size: i32 },
     Print { category: String, name: String, price: u32, sku: String },
+    Tumbler { name: String, price: u32, sku: String },
 }
 
 impl ProductKind {
     fn name(&self) -> String {
         match self {
             ProductKind::Base { color, size } => format!("Base {} {}", color.name, size),
-            ProductKind::Letter { color, letter } => format!("Keycap {} {}", color.name, letter),
+            ProductKind::Letter { color, letter } => format!("Keycap {} {}", color.code, letter),
             ProductKind::Icon { pack } => format!("Icon Pack {}", pack),
             ProductKind::Greenhouse { size } => format!("Greenhouse {}", size),
             ProductKind::Print { category, name, .. } => format!("{}, {}", category, name),
+            ProductKind::Tumbler { name, .. } => format!("Tumbler {}", name),
         }
     }
 
@@ -37,6 +39,7 @@ impl ProductKind {
             ProductKind::Icon { pack } => format!("syipk-{}", pack),
             ProductKind::Greenhouse { size } => format!("sygh-{}", size),
             ProductKind::Print { sku, .. } => sku.clone(),
+            ProductKind::Tumbler { sku, .. } => sku.clone(),
         }
     }
 
@@ -44,7 +47,7 @@ impl ProductKind {
         match self {
             ProductKind::Base { size, .. } => {
                 let base = 75;
-                if *size == 3 { base } else { base + (10 * (size - 3)) as u32 }
+                base + (10 * (size - 3)) as u32
             }
             ProductKind::Letter { .. } => 6,
             ProductKind::Icon { .. } => 1,
@@ -54,6 +57,7 @@ impl ProductKind {
                 _ => panic!("Greenhouse size {} price not handled", size),
             },
             ProductKind::Print { price, .. } => *price,
+            ProductKind::Tumbler { price, .. } => *price,
         }
     }
 
@@ -98,20 +102,24 @@ impl ConfigFile {
                     for color in &colors {
                         // Generate the char range safely
                         for c in (range_start as u8)..=(range_end as u8) {
-                            full_catalog.push(ProductKind::Letter {
+                            let product = ProductKind::Letter {
                                 color: color.clone(),
                                 letter: c as char,
-                            });
+                            };
+                            assert!(product.validate(), "Generated product failed validation: {:?}", product);
+                            full_catalog.push(product);
                         }
                     }
                 }
                 MatrixRule::Base { colors, size_start, size_end } => {
                     for color in &colors {
                         for size in size_start..=size_end {
-                            full_catalog.push(ProductKind::Base {
+                            let product = ProductKind::Base {
                                 color: color.clone(),
                                 size,
-                            });
+                            };
+                            assert!(product.validate(), "Generated product failed validation: {:?}", product);
+                            full_catalog.push(product);
                         }
                     }
                 }

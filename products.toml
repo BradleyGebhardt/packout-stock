@@ -14,6 +14,12 @@ name = "Fruit & Veg"
 price = 80
 sku = "syfv-80"
 
+[[product]]
+type = "Tumbler"
+name = "600ml"
+price = 300
+sku = "syt-300"
+
 # 2. Define your repetitive matrix expansions!
 [[matrix]]
 type = "Letter"
