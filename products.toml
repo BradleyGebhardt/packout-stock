@@ -1,0 +1,40 @@
+# 1. Define standalone custom products or items easily
+[[product]]
+type = "Greenhouse"
+size = 4
+
+[[product]]
+type = "Greenhouse"
+size = 6
+
+[[product]]
+type = "Print"
+category = "Clicker"
+name = "Fruit & Veg"
+price = 80
+sku = "syfv-80"
+
+# 2. Define your repetitive matrix expansions!
+[[matrix]]
+type = "Letter"
+colors = [
+    { name = "Purple", code = "lp" },
+    { name = "Black", code = "bk" },
+    { name = "Turquoise", code = "tq" },
+    { name = "Ice Blue", code = "lb" },
+    { name = "Pink", code = "pn" }
+]
+# Simply tell Rust to generate all letters from A to Z for these colors
+range_start = "A"
+range_end = "Z"
+
+[[matrix]]
+type = "Base"
+colors = [
+    { name = "Purple", code = "lp" },
+    { name = "Yellow", code = "y" },
+    { name = "Black", code = "bk" }
+]
+# Expand sizes 3 through 7 automatically
+size_start = 3
+size_end = 7

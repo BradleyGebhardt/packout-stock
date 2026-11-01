@@ -1,456 +1,169 @@
-use rust_xlsxwriter::{Workbook, XlsxError, conditional_format::ConditionalFormat3ColorScale};
+use rust_xlsxwriter::{Format, Workbook, XlsxError, XlsxSerialize};
+use serde::{Deserialize, Serialize};
+use std::fs;
 
-use std::fmt::{Display, Formatter, Result, format};
-
-#[derive(Debug, Copy, Clone, Default, PartialEq)]
+#[derive(Debug, Deserialize, Clone)]
 struct Color {
-    name: &'static str,
-    code: &'static str,
+    name: String,
+    code: String,
 }
 
-impl Display for Color {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "Color:{name}|{code}", name = self.name, code = self.code)
-    }
+// Represents individual parsed variants
+#[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type")]
+enum ProductKind {
+    Base { color: Color, size: i32 },
+    Letter { color: Color, letter: char },
+    Icon { pack: i32 },
+    Greenhouse { size: i32 },
+    Print { category: String, name: String, price: u32, sku: String },
 }
 
-#[derive(Default)]
-struct AlphaBase {
-    size: i32,
-    color: Color,
-}
-
-impl AlphaBase {
-    fn name(&self) -> &str {
-        "Base"
-    }
-
-    fn code(&self) -> &str {
-        "ab"
-    }
-
-    fn sku(&self) -> String {
-        format!("sy{}-{}-{}", self.code(), self.color.code, self.size)
-    }
-
-    fn price(&self) -> u32 {
-        // 25% per item for the store
-        let base: u32 = 75;
-
-        if self.size == 3 {
-            return base;
-        }
-
-        base + (10 * (self.size - 3)) as u32
-    }
-}
-
-impl Display for AlphaBase {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(
-            f,
-            "AlphaBase:{size}|{color}|{sku}",
-            size = self.size,
-            color = self.color,
-            sku = self.sku()
-        )
-    }
-}
-
-struct AlphaLetter {
-    letter: char,
-    color: Color,
-}
-
-impl AlphaLetter {
-    fn name(&self) -> &str {
-        "Keycap"
-    }
-
-    fn code(&self) -> &str {
-        "kc"
-    }
-
-    fn sku(&self) -> String {
-        format!("sy{}-{}-{}", self.code(), self.color.code, self.letter)
-    }
-
-    fn price(&self) -> u32 {
-        6
-    }
-}
-
-impl Display for AlphaLetter {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(
-            f,
-            "AlphaLetter:{color}|{letter}|{sku}",
-            color = self.color,
-            letter = self.letter,
-            sku = self.sku()
-        )
-    }
-}
-
-struct AlphaIcon {
-    pack: i32,
-}
-
-impl AlphaIcon {
-    fn name(&self) -> &str {
-        "Icon Pack"
-    }
-
-    fn code(&self) -> &str {
-        "ipk"
-    }
-
-    fn sku(&self) -> String {
-        format!("sy{}-{}", self.code(), self.pack)
-    }
-
-    fn price(&self) -> u32 {
-        1
-    }
-}
-
-impl Display for AlphaIcon {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(
-            f,
-            "AlphaIcon:{pack}|{sku}",
-            pack = self.pack,
-            sku = self.sku()
-        )
-    }
-}
-
-#[derive(Default)]
-struct AlphaPrebuilt {
-    size: i32,
-    color: Color,
-}
-
-impl AlphaPrebuilt {
-    fn name(&self) -> &str {
-        "Built"
-    }
-
-    fn code(&self) -> &str {
-        "pb"
-    }
-
-    fn sku(&self) -> String {
-        format!("sy{}-{}-{}", self.code(), self.color.code, self.size)
-    }
-
-    fn price(&self) -> u32 {
-        // 25% per item for the store
-        let base: u32 = 75;
-
-        if self.size == 3 {
-            return base;
-        }
-
-        base + (10 * (self.size - 3)) as u32
-    }
-}
-
-impl Display for AlphaPrebuilt {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(
-            f,
-            "AlphaPrebuilt:{size}|{color}|{sku}",
-            size = self.size,
-            color = self.color,
-            sku = self.sku()
-        )
-    }
-}
-
-struct Greenhouse {
-    size: i32,
-}
-
-impl Greenhouse {
-    fn name(&self) -> &str {
-        "Greenhouse"
-    }
-
-    fn code(&self) -> &str {
-        "gh"
-    }
-
-    fn sku(&self) -> String {
-        format!("sy{}-{}", self.code(), self.size)
-    }
-
-    fn price(&self) -> u32 {
-        match self.size {
-            4 => 100,
-            6 => 120,
-            _ => panic!("Greenhouse size {} price not handled", self.size),
+impl ProductKind {
+    fn name(&self) -> String {
+        match self {
+            ProductKind::Base { color, size } => format!("Base {} {}", color.name, size),
+            ProductKind::Letter { color, letter } => format!("Keycap {} {}", color.name, letter),
+            ProductKind::Icon { pack } => format!("Icon Pack {}", pack),
+            ProductKind::Greenhouse { size } => format!("Greenhouse {}", size),
+            ProductKind::Print { category, name, .. } => format!("{}, {}", category, name),
         }
     }
-}
 
-impl Display for Greenhouse {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(
-            f,
-            "Greenhouse:{size}|{sku}",
-            size = self.size,
-            sku = self.sku()
-        )
+    fn sku(&self) -> String {
+        match self {
+            ProductKind::Base { color, size } => format!("syab-{}-{}", color.code, size),
+            ProductKind::Letter { color, letter } => format!("sykc-{}-{}", color.code, letter),
+            ProductKind::Icon { pack } => format!("syipk-{}", pack),
+            ProductKind::Greenhouse { size } => format!("sygh-{}", size),
+            ProductKind::Print { sku, .. } => sku.clone(),
+        }
+    }
+
+    fn price(&self) -> u32 {
+        match self {
+            ProductKind::Base { size, .. } => {
+                let base = 75;
+                if *size == 3 { base } else { base + (10 * (size - 3)) as u32 }
+            }
+            ProductKind::Letter { .. } => 6,
+            ProductKind::Icon { .. } => 1,
+            ProductKind::Greenhouse { size } => match size {
+                4 => 100,
+                6 => 120,
+                _ => panic!("Greenhouse size {} price not handled", size),
+            },
+            ProductKind::Print { price, .. } => *price,
+        }
+    }
+
+    fn validate(&self) -> bool {
+        self.sku().len() <= 9 && self.name().len() <= 15
     }
 }
 
-struct Print {
-    name: &'static str,
-    category: &'static str,
-    price: i32,
-    sku: &'static str,
+// Represents the rule-based expansion sets in the TOML file
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type")]
+enum MatrixRule {
+    Letter {
+        colors: Vec<Color>,
+        range_start: char,
+        range_end: char,
+    },
+    Base {
+        colors: Vec<Color>,
+        size_start: i32,
+        size_end: i32,
+    },
 }
 
-impl Display for Print {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        write!(
-            f,
-            "3D Print:{category}|{name}|{sku}",
-            category = self.category,
-            name = self.name,
-            sku = self.sku,
-        )
+// The master root structure of your TOML file
+#[derive(Debug, Deserialize)]
+struct ConfigFile {
+    #[serde(default)]
+    product: Vec<ProductKind>, // The standalone entries
+    #[serde(default)]
+    matrix: Vec<MatrixRule>,   // The programmatic loops
+}
+
+impl ConfigFile {
+    // Dynamically unpacks and flattens everything into a single clean catalog list
+    fn flatten_to_catalog(self) -> Vec<ProductKind> {
+        let mut full_catalog = self.product;
+
+        for rule in self.matrix {
+            match rule {
+                MatrixRule::Letter { colors, range_start, range_end } => {
+                    for color in &colors {
+                        // Generate the char range safely
+                        for c in (range_start as u8)..=(range_end as u8) {
+                            full_catalog.push(ProductKind::Letter {
+                                color: color.clone(),
+                                letter: c as char,
+                            });
+                        }
+                    }
+                }
+                MatrixRule::Base { colors, size_start, size_end } => {
+                    for color in &colors {
+                        for size in size_start..=size_end {
+                            full_catalog.push(ProductKind::Base {
+                                color: color.clone(),
+                                size,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        full_catalog
     }
 }
 
-// impl Print {
-//     fn sku(&self) -> String {
-//         format!("sy{}-{}", self.code(), self.size)
-//     }
+#[derive(XlsxSerialize, Serialize)]
+#[xlsx(header_format = Format::new().set_bold())] // Make header bold automatically!
+struct FlattenedRow {
+    #[xlsx(rename = "Name", column_width = 25.0)]
+    name: String,
+    
+    #[xlsx(rename = "Price", column_width = 12.0)]
+    price: u32,
+    
+    #[xlsx(rename = "SKU", column_width = 15.0)]
+    sku: String,
+}
 
-//     fn price(&self) -> u32 {
-//         match self.size {
-//             4 => 100,
-//             6 => 120,
-//             _ => panic!("Greenhouse size {} price not handled", self.size)
-//         }
-//     }
-// }
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Load and unpack the entire file layout smoothly
+    let content = fs::read_to_string("products.toml")?;
+    let config: ConfigFile = toml::from_str(&content)?;
+    
+    let final_catalog = config.flatten_to_catalog();
+    println!("Dynamically generated {} products from your concise TOML configuration!", final_catalog.len());
 
-const LILAC_PURPLE: Color = Color {
-    // name: "LPrp",
-    name: "Purple",
-    code: "lp",
-};
+    // You can now pipe `final_catalog` directly straight into your `FlattenedRow` mapping 
+    // and call `worksheet.serialize(&rows)` just like before!
 
-const YELLOW: Color = Color {
-    name: "Yellow",
-    code: "y",
-};
-
-const BLACK: Color = Color {
-    name: "Black",
-    code: "bk",
-};
-
-const TURQOISE: Color = Color {
-    name: "Turquoise",
-    code: "tq",
-};
-
-const LIGHT_BLUE: Color = Color {
-    name: "Ice Blue",
-    code: "lb",
-};
-
-const PINK: Color = Color {
-    name: "Pink",
-    code: "pn",
-};
-
-const COLOR_ARRAY: [Color; 6] = [LILAC_PURPLE, YELLOW, BLACK, TURQOISE, LIGHT_BLUE, PINK];
-
-// fn main() -> Result<(), XlsxError> {
-fn main() -> Result {
     let mut workbook = Workbook::new();
     let worksheet = workbook.add_worksheet();
-    let _ = worksheet.set_name("Stock");
+    worksheet.set_name("Stock")?;
 
-    worksheet
-        .write(0, 0, "name")
-        .expect("ERROR: Failed to write name header");
-    worksheet
-        .write(0, 1, "price")
-        .expect("ERROR: Failed to write price header");
-    worksheet
-        .write(0, 2, "sku")
-        .expect("ERROR: Failed to write sku header");
+    // 2. Map polymorphic data into flat rows
+    let rows: Vec<FlattenedRow> = final_catalog
+        .iter()
+        .map(|item| FlattenedRow {
+            name: item.name(),
+            price: item.price(),
+            sku: item.sku(),
+        })
+        .collect();
 
-    let mut row = 1;
+    // 3. Dump the entire data structure straight into the worksheet instantly!
+    worksheet.set_serialize_headers::<FlattenedRow>(0, 0)?; // Sets up headers automatically
+    worksheet.serialize(&rows)?; // Dumps all data rows dynamically
 
-    // BLOCK: Bases
-    for new_color in COLOR_ARRAY {
-        for new_size in 3..8 {
-            let base = AlphaBase {
-                color: new_color.clone(),
-                size: new_size,
-                ..Default::default()
-            };
-
-            assert!(base.sku().len() <= 9, "{base}");
-            assert!(base.name().len() <= 15, "{base}");
-
-            worksheet
-                .write(
-                    row,
-                    0,
-                    format!("{} {} {}", base.name(), base.color.name, base.size),
-                )
-                .expect("ERROR: Failed to write  name");
-            worksheet
-                .write(row, 1, format!("{}", base.price()))
-                .expect("ERROR: Failed to write base price");
-            worksheet
-                .write(row, 2, format!("{}", base.sku()))
-                .expect("ERROR: Failed to write base sku");
-
-            row += 1;
-        }
-    }
-
-    // BLOCK: Icons
-    for new_size in 1..11 {
-        let base = AlphaIcon { pack: new_size };
-
-        assert!(base.sku().len() <= 9, "{base}");
-        assert!(base.name().len() <= 15, "{base}");
-
-        worksheet
-            .write(row, 0, format!("{} {}", base.name(), base.pack))
-            .expect("ERROR: Failed to write pack name");
-        worksheet
-            .write(row, 1, format!("{}", base.price()))
-            .expect("ERROR: Failed to write pack price");
-        worksheet
-            .write(row, 2, format!("{}", base.sku()))
-            .expect("ERROR: Failed to write pack sku");
-
-        row += 1;
-    }
-
-    // BLOCK: Letters
-    for new_color in COLOR_ARRAY {
-        if new_color == YELLOW {
-            continue;
-        }
-
-        for new_size in 65..91 {
-            let base = AlphaLetter {
-                letter: (new_size as u8) as char,
-                color: new_color.clone(),
-            };
-
-            assert!(base.sku().len() <= 9, "{base}");
-            assert!(base.name().len() <= 15, "{base}");
-
-            worksheet
-                .write(
-                    row,
-                    0,
-                    format!("{} {} {}", base.name(), base.color.name, base.letter),
-                )
-                .expect("ERROR: Failed to write  name");
-            worksheet
-                .write(row, 1, format!("{}", base.price()))
-                .expect("ERROR: Failed to write base price");
-            worksheet
-                .write(row, 2, format!("{}", base.sku()))
-                .expect("ERROR: Failed to write base sku");
-
-            row += 1;
-        }
-    }
-
-    // BLOCK: Numbers
-    for new_color in COLOR_ARRAY {
-        if new_color == YELLOW {
-            continue;
-        }
-
-        for new_size in 48..58 {
-            let base = AlphaLetter {
-                letter: (new_size as u8) as char,
-                color: new_color.clone(),
-            };
-
-            assert!(base.sku().len() <= 9, "{base}");
-            assert!(base.name().len() <= 15, "{base}");
-
-            worksheet
-                .write(
-                    row,
-                    0,
-                    format!("{} {} {}", base.name(), base.color.name, base.letter),
-                )
-                .expect("ERROR: Failed to write  name");
-            worksheet
-                .write(row, 1, format!("{}", base.price()))
-                .expect("ERROR: Failed to write base price");
-            worksheet
-                .write(row, 2, format!("{}", base.sku()))
-                .expect("ERROR: Failed to write base sku");
-
-            row += 1;
-        }
-    }
-
-    // BLOCK: Greenhouses
-    for new_size in [4, 6] {
-        let base = Greenhouse { size: new_size };
-
-        assert!(base.sku().len() <= 9, "{base}");
-        assert!(base.name().len() <= 15, "{base}");
-
-        worksheet
-            .write(row, 0, format!("{} {}", base.name(), base.size))
-            .expect("ERROR: Failed to write  name");
-        worksheet
-            .write(row, 1, format!("{}", base.price()))
-            .expect("ERROR: Failed to write base price");
-        worksheet
-            .write(row, 2, format!("{}", base.sku()))
-            .expect("ERROR: Failed to write base sku");
-
-        row += 1;
-    }
-
-    // BLOCK: Fruit, Veg
-    {
-        let price = 80;
-        let base = Print {
-            category: "Clicker",
-            name: "Fruit & Veg",
-            price: price,
-            sku: "syfv-80",
-        };
-
-        assert!(base.sku.len() <= 9, "{base} sku too long");
-        assert!(base.name.len() <= 15, "{base} name too long");
-
-        worksheet
-            .write(row, 0, format!("{}, {}", base.category, base.name))
-            .expect("ERROR: Failed to write  name");
-        worksheet
-            .write(row, 1, format!("{}", base.price))
-            .expect("ERROR: Failed to write base price");
-        worksheet
-            .write(row, 2, format!("{}", base.sku))
-            .expect("ERROR: Failed to write base sku");
-        workbook
-            .save("Stock.xlsx")
-            .expect("ERROR: Failed to save Stock");
-    }
+    workbook.save("Stock.xlsx")?;
 
     Ok(())
 }
