@@ -4,4 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-rust_xlsxwriter = "0.102.0"
+calamine = "0.38.0"
+rust_xlsxwriter = { version = "0.102.0", features = ["serde"] }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+strfmt = "0.2.6"
+toml = "1.1.8"
