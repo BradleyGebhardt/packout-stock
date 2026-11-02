@@ -3,6 +3,11 @@ use rust_xlsxwriter::{Workbook, XlsxSerialize};
 use serde;
 use std::collections::HashMap;
 use strfmt::strfmt;
+use barcoders::sym::code39::Code39;
+use barcoders::generators::image::Image;
+use std::fs::File;
+use std::io::BufWriter;
+use std::path::Path;
 
 const DEFAULT_SKU_FORMAT: &'static str = "sy-{code}";
 
@@ -50,9 +55,18 @@ impl RawStock {
         map.insert("name".to_string(), self.name.clone());
         map.insert("code".to_string(), self.code.clone());
         map.insert("price".to_string(), self.price.to_string());
-        map.insert("extra_one".to_string(), self.extra_one.clone().unwrap_or("".to_string()));
-        map.insert("extra_two".to_string(), self.extra_two.clone().unwrap_or("".to_string()));
-        map.insert("extra_three".to_string(), self.extra_three.clone().unwrap_or("".to_string()));
+        map.insert(
+            "extra_one".to_string(),
+            self.extra_one.clone().unwrap_or("".to_string()),
+        );
+        map.insert(
+            "extra_two".to_string(),
+            self.extra_two.clone().unwrap_or("".to_string()),
+        );
+        map.insert(
+            "extra_three".to_string(),
+            self.extra_three.clone().unwrap_or("".to_string()),
+        );
 
         map
     }
@@ -68,27 +82,30 @@ impl RawStock {
         let sku_format = self.sku_format();
 
         match strfmt(&sku_format, &vars) {
-            Ok(rendered) => rendered,
+            Ok(rendered) => rendered.to_ascii_uppercase(),
             Err(e) => panic!("ERROR: failed to format sku: {e}"),
         }
     }
 
     fn validate(&self) {
         let sku = self.sku();
+        let sku_length = sku.len();
         assert!(
-            self.sku().len() <= 9,
+            sku_length <= 9,
             "ERROR: {}'s SKU is over 9 chars; {}, {}, {} chars",
             self.name,
             self.sku_format(),
             sku,
-            sku.len(),
+            sku_length,
         );
 
+        let name_length = self.name.len();
+
         assert!(
-            self.name.len() <= 15,
+            name_length <= 15,
             "ERROR: {} is over 15 chars, {}",
             self.name,
-            self.name.len()
+            name_length
         );
     }
 }
@@ -104,6 +121,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for row in raw_stock {
         let row = row?;
         row.validate();
+
+        let barcode = Code39::new(row.sku())?;
+
+        let encoded_barcode = barcode.encode();
+
+        let barcode_png = Image::png(80);
+        let png_bytes = barcode_png.generate(encoded_barcode)?;
 
         stock_list.push(StockOutput {
             name: row.name.clone(),

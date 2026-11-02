@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+barcoders = { version = "2.0.0", features = ["image"] }
 calamine = "0.38.0"
 rust_xlsxwriter = { version = "0.102.0", features = ["serde"] }
 serde = { version = "1.0.229", features = ["derive"] }
