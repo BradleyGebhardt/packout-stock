@@ -4,10 +4,8 @@ use serde;
 use std::collections::HashMap;
 use strfmt::strfmt;
 use barcoders::sym::code39::Code39;
-use barcoders::generators::image::Image;
-use std::fs::File;
-use std::io::BufWriter;
-use std::path::Path;
+use barcoders::generators::image::{Color, Image, Rotation};
+use rust_xlsxwriter::Image as ExcelImage; // Alias to prevent naming conflicts
 
 const DEFAULT_SKU_FORMAT: &'static str = "sy-{code}";
 
@@ -117,17 +115,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .from_range::<_, RawStock>(&raw_stock_worksheet)?;
 
     let mut stock_list: Vec<StockOutput> = Vec::new();
+    let mut barcode_images: Vec<Vec<u8>> = Vec::new();
 
     for row in raw_stock {
         let row = row?;
         row.validate();
 
         let barcode = Code39::new(row.sku())?;
-
         let encoded_barcode = barcode.encode();
 
-        let barcode_png = Image::png(80);
-        let png_bytes = barcode_png.generate(encoded_barcode)?;
+        // Updated with color arguments as [u8; 4] (RGBA)
+        let barcode_png = Image::PNG {
+            height: 60,
+            xdim: 1,
+            rotation: Rotation::Zero,
+            foreground: barcoders::generators::image::Color::new([0, 0, 0, 255]),     // Opaque Black
+            background: barcoders::generators::image::Color::new([255, 255, 255, 255]), // Opaque White
+        };
+        let png_bytes = barcode_png.generate(&encoded_barcode)?;
+        barcode_images.push(png_bytes);
 
         stock_list.push(StockOutput {
             name: row.name.clone(),
@@ -140,10 +146,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output_worksheet = output_workbook.add_worksheet();
     output_worksheet.set_name("Stock")?;
 
-    output_worksheet.set_serialize_headers::<StockOutput>(0, 0)?; // Sets up headers automatically
-    output_worksheet.serialize(&stock_list)?; // Dumps all data rows dynamically
+    output_worksheet.set_serialize_headers::<StockOutput>(0, 0)?;
+    output_worksheet.serialize(&stock_list)?;
+
+    output_worksheet.write_string(0, 3, "Barcode Image")?;
+    output_worksheet.set_column_width(3, 30.0)?;
+
+    for (index, img_bytes) in barcode_images.iter().enumerate() {
+        let row_index = (index + 1) as u32;
+
+        output_worksheet.set_row_height(row_index, 50.0)?;
+
+        let excel_image = ExcelImage::new_from_buffer(img_bytes)?;
+        output_worksheet.insert_image(row_index, 3, &excel_image)?;
+    }
 
     output_workbook.save("Stock.xlsx")?;
 
+    println!("Workbook saved with embedded barcodes!");
     Ok(())
 }
