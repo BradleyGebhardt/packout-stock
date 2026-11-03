@@ -27,7 +27,17 @@ enum ProductKind {
         name: String,
         size: Option<String>,
         code: String,
+        price: i32,
     },
+    Fidget {
+        name: String,
+        price: i32,
+    },
+    Sandbox {
+        name: String,
+        code: String,
+        price: i32,
+    }
 }
 
 impl std::fmt::Display for ProductKind {
@@ -39,15 +49,17 @@ impl std::fmt::Display for ProductKind {
 impl ProductKind {
     fn name(&self) -> String {
         let name = match self {
-            ProductKind::Base { color, size, .. } => format!("Base {} {}", color.name, size),
+            ProductKind::Base { color, size, .. } => format!("A/B {} {}", color.name, size),
             ProductKind::Letter { color, letter, .. } => format!("KC {} {}", color.name, letter),
             ProductKind::Icon { pack } => format!("Icon Pack {}", pack),
             ProductKind::Greenhouse { size, .. } => format!("Greenhouse {}", size),
             ProductKind::Tumbler { name, .. } => format!("Tumbler {}", name),
             ProductKind::Dragon { name, .. } => format!("Drg {}", name),
+            ProductKind::Fidget { name, .. } => format!("{name}"),
+            ProductKind::Sandbox { name, .. } => format!("SBox {name}"),
         };
 
-        assert!(name.len() <= 15, "{} is over 15 chars", name);
+        assert!(name.len() <= 15, "{} is over 15 chars; {}", name, name.len());
 
         name
     }
@@ -63,6 +75,8 @@ impl ProductKind {
             ProductKind::Greenhouse { size, .. } => format!("{sku_base}-gh-{size}"),
             ProductKind::Tumbler { code, .. } => format!("{sku_base}-{code}"),
             ProductKind::Dragon { code, .. } => format!("{sku_base}-{code}"),
+            ProductKind::Fidget { name, price } => format!("{sku_base}-fgtcl-{}", name.split(" ").last().unwrap_or(&price.to_string())),
+            ProductKind::Sandbox { code, .. } => format!("{sku_base}-{code}"),
         };
 
         assert!(sku.len() <= 15, "{}'s SKU is over 15 chars: {}, {}", self.name(), sku, sku.len());
@@ -80,14 +94,9 @@ impl ProductKind {
             ProductKind::Icon { .. } => 1,
             ProductKind::Greenhouse { price, .. } => *price,
             ProductKind::Tumbler { price, .. } => *price,
-            ProductKind::Dragon { name, .. } => match name.as_str() {
-                "Earth" => 150,
-                "Small" => 150,
-                "Medium" => 220,
-                "Large" => 300,
-                "Mini Fidget" => 60,
-                _ => panic!("Dragon {} not covered", name),
-            }
+            ProductKind::Dragon { price, .. } => *price as u32,
+            ProductKind::Fidget { price, .. } => *price as u32,
+            ProductKind::Sandbox { price, .. } => *price as u32,
         }
     }
 }

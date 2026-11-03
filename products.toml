@@ -19,39 +19,128 @@ code = "tbl-600"
 type = "Dragon"
 name = "Earth"
 code = "drg-e"
+price = 150
 
 [[product]]
 type = "Dragon"
 name = "Small"
 size = "Small"
 code = "drg-s"
+price = 150
 
 [[product]]
 type = "Dragon"
 name = "Medium"
 size = "Medium"
 code = "drg-m"
+price = 220
 
 [[product]]
 type = "Dragon"
 name = "Large"
 size = "Large"
 code = "drg-l-m"
+price = 300
 
 [[product]]
 type = "Dragon"
 name = "Mini Fidget"
 code = "drg-fd"
+price = 60
+
+[[product]]
+type = "Fidget"
+name = "Clicker 1"
+price = 50
+
+[[product]]
+type = "Fidget"
+name = "Clicker 2"
+price = 60
+
+[[product]]
+type = "Fidget"
+name = "Clicker 3"
+price = 70
+
+[[product]]
+type = "Fidget"
+name = "Clicker 4"
+price = 80
+
+[[product]]
+type = "Fidget"
+name = "Clicker 5"
+price = 90
+
+[[product]]
+type = "Fidget"
+name = "Clicker 6"
+price = 100
+
+[[product]]
+type = "Fidget"
+name = "Clicker 7"
+price = 110
+
+[[product]]
+type = "Fidget"
+name = "Clicker 8"
+price = 120
+
+[[product]]
+type = "Sandbox"
+name = "Ladybird"
+code = "snd-ldb"
+price = 250
+
+[[product]]
+type = "Sandbox"
+name = "Turtle"
+code = "snd-trt"
+price = 220
+
+[[product]]
+type = "Sandbox"
+name = "Polar Bear"
+code = "snd-pbi"
+price = 380
+
+[[product]]
+type = "Sandbox"
+name = "Sensory 1"
+code = "snd-s1"
+price = 220
+
+[[product]]
+type = "Sandbox"
+name = "Sensory 2"
+code = "snd-s2"
+price = 250
+
+[[product]]
+type = "Sandbox"
+name = "Sensory 3"
+code = "snd-s3"
+price = 300
+
+[[product]]
+type = "Sandbox"
+name = "Sensory 4"
+code = "snd-s4"
+price = 350
 
 # 2. Define your repetitive matrix expansions!
 [[matrix]]
 type = "Letter"
 colors = [
-    { name = "Purple", code = "lp" },
+    { name = "Purple", code = "pr" },
     { name = "Black", code = "bk" },
     { name = "Turquoise", code = "tq" },
-    { name = "Ice Blue", code = "lb" },
-    { name = "Pink", code = "pn" }
+    { name = "Magenta", code = "mg" },
+    { name = "Dark Blue", code = "db" },
+    { name = "Pink", code = "pn" },
+    { name = "Generic", code = "gn" },
 ]
 # Simply tell Rust to generate all letters from A to Z for these colors
 range_start = "A"
@@ -60,9 +149,16 @@ range_end = "Z"
 [[matrix]]
 type = "Base"
 colors = [
+    { name = "Purple", code = "pr" },
+    { name = "Black", code = "bk" },
+    { name = "Turquoise", code = "tq" },
+    { name = "Magenta", code = "mg" },
+    { name = "Dark Blue", code = "db" },
+    { name = "Pink", code = "pn" },
     { name = "Purple", code = "lp" },
     { name = "Yellow", code = "y" },
-    { name = "Black", code = "bk" }
+    { name = "Black", code = "bk" },
+    { name = "Generic", code = "gn" },
 ]
 # Expand sizes 3 through 7 automatically
 size_start = 3
