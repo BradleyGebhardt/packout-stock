@@ -1,7 +1,8 @@
-use rust_xlsxwriter::{Workbook, XlsxSerialize};
+use rust_xlsxwriter::{Format, Workbook, XlsxSerialize}; // Added Format here to fix compilation
 use serde::{Deserialize, Serialize};
-use std::fs;
+use std::collections::HashSet; // Brought HashSet into scope for tracking duplicates
 use std::fmt;
+use std::fs;
 
 #[derive(Debug, Deserialize, Clone)]
 struct Color {
@@ -50,7 +51,7 @@ impl ProductKind {
     fn name(&self) -> String {
         let name = match self {
             ProductKind::Base { color, size, .. } => format!("A/B {} {}", color.name, size),
-            ProductKind::Letter { color, letter, .. } => format!("KC {} {}", color.name, letter),
+            ProductKind::Letter { color, letter, .. } => format!("AKL {} {}", color.name, letter),
             ProductKind::Icon { pack } => format!("Icon Pack {}", pack),
             ProductKind::Greenhouse { size, .. } => format!("Greenhouse {}", size),
             ProductKind::Tumbler { name, .. } => format!("Tumbler {}", name),
@@ -64,7 +65,6 @@ impl ProductKind {
         name
     }
 
-    // CENTRALIZED SYSTEM: Every SKU mutation happens completely inside this single function block.
     fn sku(&self) -> String {
         let sku_base = "sayt";
 
@@ -165,7 +165,7 @@ struct FlattenedRow {
     name: String,
     #[xlsx(rename = "Price", column_width = 12.0)]
     price: u32,
-    #[xlsx(rename = "SKU", column_width = 15.0)]
+    #[xlsx(rename = "Sku", column_width = 15.0)]
     sku: String,
 }
 
@@ -185,14 +185,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|item| FlattenedRow {
             name: item.name(),
             price: item.price(),
-            sku: item.sku(), // Call our single unified configuration pipeline
+            sku: item.sku(),
         })
         .collect();
+
+    // --- UNIQUENESS ASSERTION ENGINE ---
+    let mut seen_skus = HashSet::new();
+    for row in &rows {
+        assert!(
+            seen_skus.insert(row.sku.clone()),
+            "COMPILE ERROR: Duplicate SKU found! The item \"{}\" generated a duplicate SKU: \"{}\"",
+            row.name,
+            row.sku
+        );
+    }
+    // ------------------------------------
 
     worksheet.set_serialize_headers::<FlattenedRow>(0, 0)?;
     worksheet.serialize(&rows)?;
 
     workbook.save("Stock.xlsx")?;
+    println!("Successfully validated and saved records to Stock.xlsx!");
 
     Ok(())
 }

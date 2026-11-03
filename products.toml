@@ -16,6 +16,18 @@ price = 300
 code = "tbl-600"
 
 [[product]]
+type = "Tumbler"
+name = "Shrt J"
+price = 400
+code = "tbl-jill"
+
+[[product]]
+type = "Tumbler"
+name = "Engrvd"
+price = 350
+code = "tbl-eng"
+
+[[product]]
 type = "Dragon"
 name = "Earth"
 code = "drg-e"
@@ -150,7 +162,6 @@ range_end = "Z"
 type = "Base"
 colors = [
     { name = "Purple", code = "pr" },
-    { name = "Black", code = "bk" },
     { name = "Turquoise", code = "tq" },
     { name = "Magenta", code = "mg" },
     { name = "Dark Blue", code = "db" },
