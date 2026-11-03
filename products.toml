@@ -2,23 +2,46 @@
 [[product]]
 type = "Greenhouse"
 size = 4
+price = 120
 
 [[product]]
 type = "Greenhouse"
 size = 6
-
-[[product]]
-type = "Print"
-category = "Clicker"
-name = "Fruit & Veg"
-price = 80
-sku = "syfv-80"
+price = 140
 
 [[product]]
 type = "Tumbler"
 name = "600ml"
 price = 300
-sku = "syt-300"
+code = "tbl-600"
+
+[[product]]
+type = "Dragon"
+name = "Earth"
+code = "drg-e"
+
+[[product]]
+type = "Dragon"
+name = "Small"
+size = "Small"
+code = "drg-s"
+
+[[product]]
+type = "Dragon"
+name = "Medium"
+size = "Medium"
+code = "drg-m"
+
+[[product]]
+type = "Dragon"
+name = "Large"
+size = "Large"
+code = "drg-l-m"
+
+[[product]]
+type = "Dragon"
+name = "Mini Fidget"
+code = "drg-fd"
 
 # 2. Define your repetitive matrix expansions!
 [[matrix]]
