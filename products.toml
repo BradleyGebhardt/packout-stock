@@ -101,6 +101,46 @@ name = "Clicker 8"
 price = 120
 
 [[product]]
+type = "Fidget"
+name = "Clicker 9"
+price = 130
+
+[[product]]
+type = "Fidget"
+name = "Clicker 10"
+price = 140
+
+[[product]]
+type = "Fidget"
+name = "Clicker 11"
+price = 150
+
+[[product]]
+type = "Fidget"
+name = "Clicker 12"
+price = 160
+
+[[product]]
+type = "Fidget"
+name = "Clicker 13"
+price = 170
+
+[[product]]
+type = "Fidget"
+name = "Clicker 14"
+price = 180
+
+[[product]]
+type = "Fidget"
+name = "Clicker 15"
+price = 190
+
+[[product]]
+type = "Fidget"
+name = "Clicker 16"
+price = 200
+
+[[product]]
 type = "Sandbox"
 name = "Ladybird"
 code = "snd-ldb"
@@ -142,6 +182,54 @@ name = "Sensory 4"
 code = "snd-s4"
 price = 350
 
+[[product]]
+type = "Sandbox"
+name = "Sensory 5"
+code = "snd-s5"
+price = 450
+
+[[product]]
+type = "Sandbox"
+name = "Friend"
+code = "snd-fr"
+price = 25
+
+[[product]]
+type = "Sandbox"
+name = "Friend x3"
+code = "snd-fr3"
+price = 60
+
+[[product]]
+type = "Sandbox"
+name = "Friend x5"
+code = "snd-fr5"
+price = 100
+
+[[product]]
+type = "Sandbox"
+name = "Acc 1"
+code = "snd-a1"
+price = 40
+
+[[product]]
+type = "Sandbox"
+name = "Acc 2"
+code = "snd-a2"
+price = 50
+
+[[product]]
+type = "Sandbox"
+name = "Acc 3"
+code = "snd-a3"
+price = 60
+
+[[product]]
+type = "Sandbox"
+name = "Acc 4"
+code = "snd-a4"
+price = 70
+
 # 2. Define your repetitive matrix expansions!
 [[matrix]]
 type = "Letter"
@@ -157,6 +245,23 @@ colors = [
 # Simply tell Rust to generate all letters from A to Z for these colors
 range_start = "A"
 range_end = "Z"
+
+# 4. Define your repetitive matrix expansions!
+[[matrix]]
+type = "Number"
+colors = [
+    { name = "Purple", code = "pr" },
+    { name = "Black", code = "bk" },
+    { name = "Turquoise", code = "tq" },
+    { name = "Magenta", code = "mg" },
+    { name = "Dark Blue", code = "db" },
+    { name = "Pink", code = "pn" },
+    { name = "Generic", code = "gn" },
+]
+# Simply tell Rust to generate all numbers from 0 to 9 for these colors
+range_start = 0
+range_end = 9
+
 
 [[matrix]]
 type = "Base"

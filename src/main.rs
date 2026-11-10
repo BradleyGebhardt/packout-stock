@@ -21,6 +21,10 @@ enum ProductKind {
         color: Color,
         letter: char,
     },
+    Number {
+        color: Color,
+        number: i32,
+    },
     Icon { pack: i32 },
     Greenhouse { size: i32, price: u32 },
     Tumbler { name: String, price: u32, code: String },
@@ -52,6 +56,7 @@ impl ProductKind {
         let name = match self {
             ProductKind::Base { color, size, .. } => format!("A/B {} {}", color.name, size),
             ProductKind::Letter { color, letter, .. } => format!("AKL {} {}", color.name, letter),
+            ProductKind::Number { color, number, .. } => format!("AKN {} {}", color.name, number),
             ProductKind::Icon { pack } => format!("Icon Pack {}", pack),
             ProductKind::Greenhouse { size, .. } => format!("Greenhouse {}", size),
             ProductKind::Tumbler { name, .. } => format!("Tumbler {}", name),
@@ -71,6 +76,7 @@ impl ProductKind {
         let sku = match self {
             ProductKind::Base { color, size, .. } => format!("{sku_base}-ab-{}-{size}", color.code),
             ProductKind::Letter { color, letter, .. } => format!("{sku_base}-al-{}-{letter}", color.code),
+            ProductKind::Number { color, number, .. } => format!("{sku_base}-anm-{}-{number}", color.code),
             ProductKind::Icon { pack } => format!("{sku_base}-pck-{}", pack),
             ProductKind::Greenhouse { size, .. } => format!("{sku_base}-gh-{size}"),
             ProductKind::Tumbler { code, .. } => format!("{sku_base}-{code}"),
@@ -91,6 +97,7 @@ impl ProductKind {
                 base + (10 * (size - 3)) as u32
             }
             ProductKind::Letter { .. } => 6,
+            ProductKind::Number { .. } => 6,
             ProductKind::Icon { .. } => 1,
             ProductKind::Greenhouse { price, .. } => *price,
             ProductKind::Tumbler { price, .. } => *price,
@@ -114,6 +121,11 @@ enum MatrixRule {
         size_start: i32,
         size_end: i32,
     },
+    Number {
+        colors: Vec<Color>,
+        range_start: i32,
+        range_end: i32,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -136,6 +148,17 @@ impl ConfigFile {
                             let product = ProductKind::Letter {
                                 color: color.clone(),
                                 letter: c as char,
+                            };
+                            full_catalog.push(product);
+                        }
+                    }
+                }
+                MatrixRule::Number { colors, range_start, range_end } => {
+                    for color in &colors {
+                        for n in range_start..=range_end {
+                            let product = ProductKind::Number {
+                                color: color.clone(),
+                                number: n,
                             };
                             full_catalog.push(product);
                         }
