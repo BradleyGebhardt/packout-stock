@@ -17,6 +17,54 @@ code = "tbl-600"
 
 [[product]]
 type = "Tumbler"
+name = "600ml"
+price = 300
+code = "tbl-scr"
+
+[[product]]
+type = "Tumbler"
+name = "600ml"
+price = 300
+code = "tbl-afr"
+
+[[product]]
+type = "Tumbler"
+name = "600ml"
+price = 300
+code = "tbl-f1"
+
+[[product]]
+type = "Tumbler"
+name = "600ml"
+price = 300
+code = "tbl-anim"
+
+[[product]]
+type = "Tumbler"
+name = "600ml"
+price = 300
+code = "tbl-char"
+
+[[product]]
+type = "Tumbler"
+name = "600ml"
+price = 300
+code = "tbl-humr"
+
+[[product]]
+type = "Tumbler"
+name = "600ml"
+price = 300
+code = "tbl-fem"
+
+[[product]]
+type = "Tumbler"
+name = "600ml"
+price = 300
+code = "tbl-dup"
+
+[[product]]
+type = "Tumbler"
 name = "Shrt J"
 price = 400
 code = "tbl-jill"
@@ -229,6 +277,11 @@ type = "Sandbox"
 name = "Acc 4"
 code = "snd-a4"
 price = 70
+
+# [[matrix]]
+# type = "Tumbler"
+# range_start = 1
+# range_end = 500
 
 # 2. Define your repetitive matrix expansions!
 [[matrix]]
