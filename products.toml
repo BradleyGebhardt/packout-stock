@@ -83,6 +83,18 @@ code = "tbl-gam"
 
 [[product]]
 type = "Tumbler"
+name = "600ml"
+price = 300
+code = "tbl-za"
+
+[[product]]
+type = "Tumbler"
+name = "600ml"
+price = 300
+code = "tbl-zod"
+
+[[product]]
+type = "Tumbler"
 name = "Shrt J"
 price = 400
 code = "tbl-jill"
