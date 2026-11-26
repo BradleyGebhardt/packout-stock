@@ -1,168 +1,236 @@
-use calamine::{self, Reader};
-use rust_xlsxwriter::{Workbook, XlsxSerialize};
-use serde;
-use std::collections::HashMap;
-use strfmt::strfmt;
-use barcoders::sym::code39::Code39;
-use barcoders::generators::image::{Color, Image, Rotation};
-use rust_xlsxwriter::Image as ExcelImage; // Alias to prevent naming conflicts
+use rust_xlsxwriter::{Format, Workbook, XlsxSerialize}; // Added Format here to fix compilation
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet; // Brought HashSet into scope for tracking duplicates
+use std::fmt;
+use std::fs;
 
-const DEFAULT_SKU_FORMAT: &'static str = "sy-{code}";
-
-#[derive(Debug, serde::Deserialize)]
-struct RawStock {
+#[derive(Debug, Deserialize, Clone)]
+struct Color {
     name: String,
-    price: u32,
     code: String,
-    #[serde(rename = "sku-format", default)]
-    sku_format: Option<String>,
-    extra_one: Option<String>,
-    extra_two: Option<String>,
-    extra_three: Option<String>,
 }
 
-#[derive(XlsxSerialize, serde::Serialize)]
-struct StockOutput {
-    #[xlsx(rename = "Name", column_width = 25.0)]
-    name: String,
-    #[xlsx(rename = "Price", column_width = 15.0)]
-    price: u32,
-    #[xlsx(rename = "Sku", column_width = 25.0)]
-    sku: String,
-}
-
-impl std::fmt::Display for RawStock {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let sku_format = self
-            .sku_format
-            .clone()
-            .unwrap_or(DEFAULT_SKU_FORMAT.to_string());
-        let sku = self.sku();
-        write!(
-            f,
-            "{}, {}, {}, {}, {}",
-            self.name, self.code, self.price, sku_format, sku
-        )
-    }
-}
-
-impl RawStock {
-    fn to_format_map(&self) -> HashMap<String, String> {
-        let mut map = HashMap::new();
-
-        map.insert("name".to_string(), self.name.clone());
-        map.insert("code".to_string(), self.code.clone());
-        map.insert("price".to_string(), self.price.to_string());
-        map.insert(
-            "extra_one".to_string(),
-            self.extra_one.clone().unwrap_or("".to_string()),
-        );
-        map.insert(
-            "extra_two".to_string(),
-            self.extra_two.clone().unwrap_or("".to_string()),
-        );
-        map.insert(
-            "extra_three".to_string(),
-            self.extra_three.clone().unwrap_or("".to_string()),
-        );
-
-        map
-    }
-
-    fn sku_format(&self) -> String {
-        self.sku_format
-            .clone()
-            .unwrap_or(DEFAULT_SKU_FORMAT.to_string())
-    }
-
-    fn sku(&self) -> String {
-        let vars = self.to_format_map();
-        let sku_format = self.sku_format();
-
-        match strfmt(&sku_format, &vars) {
-            Ok(rendered) => rendered.to_ascii_uppercase(),
-            Err(e) => panic!("ERROR: failed to format sku: {e}"),
-        }
-    }
-
-    fn validate(&self) {
-        let sku = self.sku();
-        let sku_length = sku.len();
-        assert!(
-            sku_length <= 9,
-            "ERROR: {}'s SKU is over 9 chars; {}, {}, {} chars",
-            self.name,
-            self.sku_format(),
-            sku,
-            sku_length,
-        );
-
-        let name_length = self.name.len();
-
-        assert!(
-            name_length <= 15,
-            "ERROR: {} is over 15 chars, {}",
-            self.name,
-            name_length
-        );
+#[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type")]
+enum ProductKind {
+    Base {
+        color: Color,
+        size: i32,
+    },
+    Letter {
+        color: Color,
+        letter: char,
+    },
+    Number {
+        color: Color,
+        number: i32,
+    },
+    Icon { pack: i32 },
+    Greenhouse { size: i32, price: u32 },
+    Tumbler { name: String, price: u32, code: String },
+    Dragon {
+        name: String,
+        size: Option<String>,
+        code: String,
+        price: i32,
+    },
+    Fidget {
+        name: String,
+        price: i32,
+    },
+    Sandbox {
+        name: String,
+        code: String,
+        price: i32,
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut raw_workbook: calamine::Xlsx<_> = calamine::open_workbook("Stock.raw.xlsx")?;
-    let raw_stock_worksheet = raw_workbook.worksheet_range("Stock")?;
-    let raw_stock = calamine::RangeDeserializerBuilder::with_deserialize_headers::<RawStock>()
-        .from_range::<_, RawStock>(&raw_stock_worksheet)?;
+impl std::fmt::Display for ProductKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name())
+    }
+}
 
-    let mut stock_list: Vec<StockOutput> = Vec::new();
-    let mut barcode_images: Vec<Vec<u8>> = Vec::new();
-
-    for row in raw_stock {
-        let row = row?;
-        row.validate();
-
-        let barcode = Code39::new(row.sku())?;
-        let encoded_barcode = barcode.encode();
-
-        // Updated with color arguments as [u8; 4] (RGBA)
-        let barcode_png = Image::PNG {
-            height: 60,
-            xdim: 1,
-            rotation: Rotation::Zero,
-            foreground: barcoders::generators::image::Color::new([0, 0, 0, 255]),     // Opaque Black
-            background: barcoders::generators::image::Color::new([255, 255, 255, 255]), // Opaque White
+impl ProductKind {
+    fn name(&self) -> String {
+        let name = match self {
+            ProductKind::Base { color, size, .. } => format!("A/B {} {}", color.name, size),
+            ProductKind::Letter { color, letter, .. } => format!("AKL {} {}", color.name, letter),
+            ProductKind::Number { color, number, .. } => format!("AKN {} {}", color.name, number),
+            ProductKind::Icon { pack } => format!("Icon Pack {}", pack),
+            ProductKind::Greenhouse { size, .. } => format!("Greenhouse {}", size),
+            ProductKind::Tumbler { name, .. } => format!("Tumbler {}", name),
+            ProductKind::Dragon { name, .. } => format!("Drg {}", name),
+            ProductKind::Fidget { name, .. } => format!("{name}"),
+            ProductKind::Sandbox { name, .. } => format!("SBox {name}"),
         };
         let png_bytes = barcode_png.generate(&encoded_barcode)?;
         barcode_images.push(png_bytes);
 
-        stock_list.push(StockOutput {
-            name: row.name.clone(),
-            price: row.price,
-            sku: row.sku(),
-        });
+        assert!(name.len() <= 15, "{} is over 15 chars; {}", name, name.len());
+
+        name
     }
 
-    let mut output_workbook = Workbook::new();
-    let output_worksheet = output_workbook.add_worksheet();
-    output_worksheet.set_name("Stock")?;
+    fn sku(&self) -> String {
+        let sku_base = "sayt";
 
-    output_worksheet.set_serialize_headers::<StockOutput>(0, 0)?;
-    output_worksheet.serialize(&stock_list)?;
+        let sku = match self {
+            ProductKind::Base { color, size, .. } => format!("{sku_base}-ab-{}-{size}", color.code),
+            ProductKind::Letter { color, letter, .. } => format!("{sku_base}-al-{}-{letter}", color.code),
+            ProductKind::Number { color, number, .. } => format!("{sku_base}-anm-{}-{number}", color.code),
+            ProductKind::Icon { pack } => format!("{sku_base}-pck-{}", pack),
+            ProductKind::Greenhouse { size, .. } => format!("{sku_base}-gh-{size}"),
+            ProductKind::Tumbler { code, .. } => format!("{sku_base}-{code}"),
+            ProductKind::Dragon { code, .. } => format!("{sku_base}-{code}"),
+            ProductKind::Fidget { name, price } => format!("{sku_base}-fgtcl-{}", name.split(" ").last().unwrap_or(&price.to_string())),
+            ProductKind::Sandbox { code, .. } => format!("{sku_base}-{code}"),
+        };
 
-    output_worksheet.write_string(0, 3, "Barcode Image")?;
-    output_worksheet.set_column_width(3, 30.0)?;
+        assert!(sku.len() <= 15, "{}'s SKU is over 15 chars: {}, {}", self.name(), sku, sku.len());
 
-    for (index, img_bytes) in barcode_images.iter().enumerate() {
-        let row_index = (index + 1) as u32;
-
-        output_worksheet.set_row_height(row_index, 50.0)?;
-
-        let excel_image = ExcelImage::new_from_buffer(img_bytes)?;
-        output_worksheet.insert_image(row_index, 3, &excel_image)?;
+        sku
     }
 
-    output_workbook.save("Stock.xlsx")?;
+    fn price(&self) -> u32 {
+        match self {
+            ProductKind::Base { size, .. } => {
+                let base = 75;
+                base + (10 * (size - 3)) as u32
+            }
+            ProductKind::Letter { .. } => 6,
+            ProductKind::Number { .. } => 6,
+            ProductKind::Icon { .. } => 1,
+            ProductKind::Greenhouse { price, .. } => *price,
+            ProductKind::Tumbler { price, .. } => *price,
+            ProductKind::Dragon { price, .. } => *price as u32,
+            ProductKind::Fidget { price, .. } => *price as u32,
+            ProductKind::Sandbox { price, .. } => *price as u32,
+        }
+    }
+}
 
-    println!("Workbook saved with embedded barcodes!");
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type")]
+enum MatrixRule {
+    Letter {
+        colors: Vec<Color>,
+        range_start: char,
+        range_end: char,
+    },
+    Base {
+        colors: Vec<Color>,
+        size_start: i32,
+        size_end: i32,
+    },
+    Number {
+        colors: Vec<Color>,
+        range_start: i32,
+        range_end: i32,
+    },
+}
+
+#[derive(Debug, Deserialize)]
+struct ConfigFile {
+    #[serde(default)]
+    product: Vec<ProductKind>,
+    #[serde(default)]
+    matrix: Vec<MatrixRule>,
+}
+
+impl ConfigFile {
+    fn flatten_to_catalog(self) -> Vec<ProductKind> {
+        let mut full_catalog = self.product;
+
+        for rule in self.matrix {
+            match rule {
+                MatrixRule::Letter { colors, range_start, range_end } => {
+                    for color in &colors {
+                        for c in (range_start as u8)..=(range_end as u8) {
+                            let product = ProductKind::Letter {
+                                color: color.clone(),
+                                letter: c as char,
+                            };
+                            full_catalog.push(product);
+                        }
+                    }
+                }
+                MatrixRule::Number { colors, range_start, range_end } => {
+                    for color in &colors {
+                        for n in range_start..=range_end {
+                            let product = ProductKind::Number {
+                                color: color.clone(),
+                                number: n,
+                            };
+                            full_catalog.push(product);
+                        }
+                    }
+                }
+                MatrixRule::Base { colors, size_start, size_end } => {
+                    for color in &colors {
+                        for size in size_start..=size_end {
+                            let product = ProductKind::Base {
+                                color: color.clone(),
+                                size,
+                            };
+                            full_catalog.push(product);
+                        }
+                    }
+                }
+            }
+        }
+        full_catalog
+    }
+}
+
+#[derive(XlsxSerialize, Serialize)]
+#[xlsx(header_format = Format::new().set_bold())]
+struct FlattenedRow {
+    #[xlsx(rename = "Name", column_width = 25.0)]
+    name: String,
+    #[xlsx(rename = "Price", column_width = 12.0)]
+    price: u32,
+    #[xlsx(rename = "Sku", column_width = 15.0)]
+    sku: String,
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let content = fs::read_to_string("products.toml")?;
+    let config: ConfigFile = toml::from_str(&content)?;
+
+    let final_catalog = config.flatten_to_catalog();
+    println!("Dynamically generated {} products from configuration!", final_catalog.len());
+
+    let mut workbook = Workbook::new();
+    let worksheet = workbook.add_worksheet();
+    worksheet.set_name("Stock")?;
+
+    let rows: Vec<FlattenedRow> = final_catalog
+        .iter()
+        .map(|item| FlattenedRow {
+            name: item.name(),
+            price: item.price(),
+            sku: item.sku(),
+        })
+        .collect();
+
+    // --- UNIQUENESS ASSERTION ENGINE ---
+    let mut seen_skus = HashSet::new();
+    for row in &rows {
+        assert!(
+            seen_skus.insert(row.sku.clone()),
+            "COMPILE ERROR: Duplicate SKU found! The item \"{}\" generated a duplicate SKU: \"{}\"",
+            row.name,
+            row.sku
+        );
+    }
+    // ------------------------------------
+
+    worksheet.set_serialize_headers::<FlattenedRow>(0, 0)?;
+    worksheet.serialize(&rows)?;
+
+    workbook.save("Stock.xlsx")?;
+    println!("Successfully validated and saved records to Stock.xlsx!");
+
     Ok(())
 }
