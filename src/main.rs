@@ -64,6 +64,8 @@ impl ProductKind {
             ProductKind::Fidget { name, .. } => format!("{name}"),
             ProductKind::Sandbox { name, .. } => format!("SBox {name}"),
         };
+        let png_bytes = barcode_png.generate(&encoded_barcode)?;
+        barcode_images.push(png_bytes);
 
         assert!(name.len() <= 15, "{} is over 15 chars; {}", name, name.len());
 
